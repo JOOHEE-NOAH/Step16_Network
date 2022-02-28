@@ -28,7 +28,7 @@ public class TCPServer {
 				
 				//상대방 정보 출력
 				ps.print(sock.getInetAddress().getHostName());
-				ps.println("수신된 메세지"+br.readLine()+"\n");
+				ps.println("에서 수신된 메세지"+br.readLine()+"\n");
 			}
 			
 			

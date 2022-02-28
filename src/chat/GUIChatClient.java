@@ -7,8 +7,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -18,7 +23,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-public class GUIChatClient extends JFrame implements ActionListener{
+public class GUIChatClient extends JFrame implements ActionListener, Runnable{
 	JPanel cardPane, connectPane, chatPane;
 	JLabel  msg;
 	JButton btn_connect, btn_send, btn_exit;
@@ -26,7 +31,16 @@ public class GUIChatClient extends JFrame implements ActionListener{
 	JTextArea txt_list;
 	CardLayout card;
 	
-
+	//2-1 start 포트 번호 지정 및 변수 선언
+	final int PORT=7500;
+	String ip_txt; //ip_주소 저장 변수
+	PrintWriter pw=null; //송신 스트림
+	BufferedReader br=null; // 수신 스트림
+	Socket sock=null;
+	//2-1 end
+	//3-1 start os변수 선언 -- 닉네임 전송 동작
+	OutputStream os=null;
+	//3-1 end
 	
 	public GUIChatClient()
 	{
@@ -51,6 +65,10 @@ public class GUIChatClient extends JFrame implements ActionListener{
 		btn_connect.addActionListener(this);
 		btn_exit.addActionListener(this);
 		//----------------------------------
+		//5-2 start
+		btn_send.addActionListener(this);
+		txt_input.addActionListener(this);
+		//5-2 end
 	}
 	public void ConnectPane()
 	{
@@ -103,7 +121,35 @@ public class GUIChatClient extends JFrame implements ActionListener{
 		if(ob == btn_connect)
 		{
 			card.show(cardPane, "채팅창");
-		
+			
+			//서버 주소 추출
+			ip_txt=txt_server_ip.getText(); //내부에 있는 문자열만 뽑아내기
+			
+			//2-2 start 쓰레드 생성
+			Thread th=new Thread(this); //implements Runnable 추가..
+			//2-2 end
+			
+			//2-3 start 접속시도
+			th.start();
+			//2-3 end
+			
+//===============================
+//			5-2 start
+			
+			if(ob==btn_send || ob==txt_input) { //전송버튼, 엔터 처리
+				String text=txt_input.getText();
+				if(text.trim().equals("")) {//enter 키를 반복하는 도배 방지
+				return;
+				}
+				pw.println(text);
+				pw.flush();
+				txt_input.setText("");
+				txt_input.requestFocus();// 커서 위치를 txt_input으로 이동
+			}
+				
+//			5-2 end	
+			
+			
 		}
 		if(ob ==btn_exit)
 			System.exit(0);
@@ -112,8 +158,43 @@ public class GUIChatClient extends JFrame implements ActionListener{
 	@Override
 	public void run() {
 		
+	//2-3 start
+		try {
+			sock=new Socket(ip_txt, PORT); //접속 시도
+			
+//			3-1 start
+			String nickname=txt_name.getText();
+			os= sock.getOutputStream();
+			pw=new PrintWriter(new OutputStreamWriter(os));
+			pw.println(nickname); //pw.print() 사용 금지.
+			pw.flush();
+			//3-1 end
+			
+			//5-1 start
+			InputStream is=sock.getInputStream();
+			br=new BufferedReader(new InputStreamReader(is));
+			
+			String str;
+			while(true) {
+				try {
+					str=br.readLine();
+					txt_list.append(str+"\n"); 
+				}catch (IOException e) {
+					txt_list.append("서버가 종료됨");
+					return;
+				}
+			}
+			//5-1 end
+			
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
-		
+		//2-3 end
 	}
 	
 	public static void main(String[] args) {
